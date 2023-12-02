@@ -1,41 +1,12 @@
 fun main() {
-    fun checkPull(red: Int, green: Int, blue: Int,
-                  redConstraint: Int, greenConstraint: Int, blueConstraint: Int): Boolean {
-        return !(red > redConstraint || green > greenConstraint || blue > blueConstraint)
-    }
-
-    fun checkGame(game: Game, redConstraint: Int, greenConstraint: Int, blueConstraint: Int): Boolean {
-        game.pulls.forEach {
-            if (!checkPull(it.red, it.green, it.blue, redConstraint, greenConstraint, blueConstraint)) {
-                return false
-            }
-        }
-        return true
-    }
-
     fun part1(input: List<String>): Int {
-        val redConstraint = 12
-        val greenConstraint = 13
-        val blueConstraint = 14
-        var sum = 0
-        input.forEach {
-            val g = Game.fromString(it)
-            if (checkGame(g, redConstraint, greenConstraint, blueConstraint)) {
-                sum += g.id
-            }
-        }
-        return sum
+        return input.map { Game.fromString(it) }
+            .sumOf { if (it.withinConstraints(12, 13, 14)) it.id else 0 }
     }
 
     fun part2(input: List<String>): Int {
-        var sum = 0
-        input.forEach {
-            val g = Game.fromString(it)
-            val (red, green, blue) = g.getSmallestSubset()
-            val power = red * green * blue
-            sum += power
-        }
-        return sum
+        return input.map { Game.fromString(it).smallestSubset() }
+            .sumOf { it.reduce { acc, i -> acc * i } }
     }
 
     val testInput = readInput("Day02_test")
@@ -48,44 +19,39 @@ fun main() {
     part2(input).println()
 }
 
-class Game(val id: Int, val pulls: List<BagPull>) {
+class Game(val id: Int, private val pulls: List<BagPull>) {
     companion object {
         fun fromString(input: String): Game {
             val parts = input.split(":")
             val id = parts.first()
                 .removePrefix("Game ")
                 .toInt()
-            val pulls = extractPulls(parts.last())
-            return Game(id, pulls)
-        }
-
-        private fun extractPulls(multiplePulls: String): List<BagPull> {
-            return multiplePulls.split(";")
+            val pulls = parts.last()
+                .split(";")
                 .map { BagPull.fromString(it) }
+            return Game(id, pulls)
         }
     }
 
-    fun getSmallestSubset(): Triple<Int, Int, Int> {
+    fun withinConstraints(redConstraint: Int, greenConstraint: Int, blueConstraint: Int): Boolean {
+        pulls.forEach {
+            if (it.red > redConstraint || it.green > greenConstraint || it.blue > blueConstraint) {
+                return false
+            }
+        }
+        return true
+    }
+
+    fun smallestSubset(): List<Int> {
         var red = 0
         var green = 0
         var blue = 0
-
         pulls.forEach {
-            if (it.red > red) {
-                red = it.red
-            }
-            if (it.green > green) {
-                green = it.green
-            }
-            if (it.blue > blue) {
-                blue = it.blue
-            }
+            red = it.red.coerceAtLeast(red)
+            green = it.green.coerceAtLeast(green)
+            blue = it.blue.coerceAtLeast(blue)
         }
-        return Triple(red, green, blue)
-    }
-
-    override fun toString(): String {
-        return "Game $id: $pulls"
+        return listOf(red, green, blue)
     }
 }
 class BagPull(var red: Int = 0, var green: Int = 0, var blue: Int = 0) {
@@ -94,20 +60,14 @@ class BagPull(var red: Int = 0, var green: Int = 0, var blue: Int = 0) {
             val pull = BagPull()
             val balls = singlePull.split(",")
             balls.forEach {
-                val oneBall = it.trim().split(" ")
-                val count = oneBall.first().toInt()
-                val color = oneBall.last()
+                val (count, color) = it.trim().split(" ")
                 when (color) {
-                    "red" -> pull.red = count
-                    "green" -> pull.green = count
-                    "blue" -> pull.blue = count
+                    "red" -> pull.red = count.toInt()
+                    "green" -> pull.green = count.toInt()
+                    "blue" -> pull.blue = count.toInt()
                 }
             }
             return pull
         }
-    }
-
-    override fun toString(): String {
-        return "[$red red, $green green, $blue blue]"
     }
 }
